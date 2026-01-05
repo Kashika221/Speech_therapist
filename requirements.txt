@@ -3,3 +3,7 @@ python-dotenv
 groq
 gTTS 
 playsound==1.2.2
+fastapi
+python-multipart
+uvicorn
+jinja2
