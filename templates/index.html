@@ -20,7 +20,7 @@
     <h1>🗣️ AI Speech Therapist</h1>
     <p>Press the button and speak. The AI will listen and respond.</p>
 
-    <button id="recordBtn">🎤 Start Recording</button>
+    <button id="recordBtn">Start Recording</button>
 
     <div class="chat-box" id="chatBox">
         <div class="message therapist"><strong>Therapist:</strong> Hello! I am ready to help you practice. Please press record and introduce yourself.</div>
@@ -57,7 +57,7 @@
             };
 
             mediaRecorder.start();
-            recordBtn.textContent = "🛑 Stop Recording";
+            recordBtn.textContent = "Stop Recording";
             recordBtn.classList.add("recording");
         }
 
@@ -74,17 +74,13 @@
 
                 if (data.error) {
                     alert("Error: " + data.error);
-                    recordBtn.textContent = "🎤 Start Recording";
+                    recordBtn.textContent = "Start Recording";
                     return;
                 }
 
-                // 1. Display User Text
                 appendMessage("You", data.user_text, "user");
-
-                // 2. Display AI Text
                 appendMessage("Therapist", data.ai_text, "therapist");
 
-                // 3. Play AI Audio
                 const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
                 audio.play();
 
@@ -92,7 +88,7 @@
                 console.error(error);
                 alert("Something went wrong.");
             } finally {
-                recordBtn.textContent = "🎤 Start Recording";
+                recordBtn.textContent = "Start Recording";
             }
         }
 
