@@ -1,104 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Speech Therapist</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center; }
-        #recordBtn { padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 50px; border: none; background-color: #007bff; color: white; }
-        #recordBtn.recording { background-color: #dc3545; animation: pulse 1.5s infinite; }
-        .chat-box { margin-top: 20px; text-align: left; border: 1px solid #ddd; padding: 15px; height: 300px; overflow-y: scroll; border-radius: 8px;}
-        .message { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
-        .user { background-color: #e9ecef; color: #333; }
-        .therapist { background-color: #d1e7dd; color: #0f5132; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-    </style>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
 
-    <h1>🗣️ AI Speech Therapist</h1>
-    <p>Press the button and speak. The AI will listen and respond.</p>
+<div class="app-container">
+    <div class="card">
 
-    <button id="recordBtn">Start Recording</button>
+        <h1>🗣️ AI Speech Therapist</h1>
+        <p class="subtitle">
+            Speak calmly. I’ll listen, guide, and help you improve.
+        </p>
 
-    <div class="chat-box" id="chatBox">
-        <div class="message therapist"><strong>Therapist:</strong> Hello! I am ready to help you practice. Please press record and introduce yourself.</div>
+        <!-- Controls -->
+        <div class="controls">
+            <input
+                type="text"
+                id="userId"
+                placeholder="Enter User ID (e.g., JohnDoe)"
+                required
+            />
+
+            <button id="recordBtn">Start Recording</button>
+        </div>
+
+        <!-- Chat -->
+        <div class="chat-box" id="chatBox">
+            <div class="message therapist">
+                <strong>Therapist:</strong>
+                Hello! I’m ready to help you practice.  
+                Please enter your ID and introduce yourself.
+            </div>
+        </div>
+
     </div>
+</div>
 
-    <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        const recordBtn = document.getElementById("recordBtn");
-        const chatBox = document.getElementById("chatBox");
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
 
-        recordBtn.addEventListener("click", async () => {
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                mediaRecorder.stop();
-                recordBtn.textContent = "Processing...";
-                recordBtn.classList.remove("recording");
-            } else {
-                startRecording();
-            }
-        });
+    const recordBtn = document.getElementById("recordBtn");
+    const chatBox = document.getElementById("chatBox");
+    const userIdInput = document.getElementById("userId");
 
-        async function startRecording() {
+    recordBtn.addEventListener("click", async () => {
+        if (!userIdInput.value.trim()) {
+            alert("Please enter a User ID first.");
+            return;
+        }
+
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+            recordBtn.textContent = "Processing...";
+            recordBtn.classList.remove("recording");
+            recordBtn.disabled = true;
+        } else {
+            startRecording();
+        }
+    });
+
+    async function startRecording() {
+        try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
             audioChunks = [];
 
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                sendAudio(audioBlob);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(audioChunks, { type: "audio/webm" });
+                sendAudio(blob);
             };
 
             mediaRecorder.start();
             recordBtn.textContent = "Stop Recording";
             recordBtn.classList.add("recording");
+        } catch (err) {
+            alert("Microphone access denied.");
         }
+    }
 
-        async function sendAudio(blob) {
-            const formData = new FormData();
-            formData.append("file", blob, "input.webm");
+    async function sendAudio(blob) {
+        const formData = new FormData();
+        formData.append("file", blob, "input.webm");
+        formData.append("user_id", userIdInput.value.trim());
 
-            try {
-                const response = await fetch("/process-audio", {
-                    method: "POST",
-                    body: formData
-                });
-                const data = await response.json();
+        try {
+            const response = await fetch("/process-audio", {
+                method: "POST",
+                body: formData
+            });
 
-                if (data.error) {
-                    alert("Error: " + data.error);
-                    recordBtn.textContent = "Start Recording";
-                    return;
-                }
+            const data = await response.json();
 
-                appendMessage("You", data.user_text, "user");
-                appendMessage("Therapist", data.ai_text, "therapist");
-
-                const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
-                audio.play();
-
-            } catch (error) {
-                console.error(error);
-                alert("Something went wrong.");
-            } finally {
-                recordBtn.textContent = "Start Recording";
+            if (data.error) {
+                alert(data.error);
+                return;
             }
-        }
 
-        function appendMessage(sender, text, className) {
-            const div = document.createElement("div");
-            div.className = `message ${className}`;
-            div.innerHTML = `<strong>${sender}:</strong> ${text}`;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            appendMessage("You", data.user_text, "user");
+            appendMessage("Therapist", data.ai_text, "therapist");
+
+            if (data.audio_base64) {
+                const audio = new Audio(
+                    "data:audio/mp3;base64," + data.audio_base64
+                );
+                audio.play();
+            }
+        } catch (err) {
+            alert("Something went wrong.");
+        } finally {
+            recordBtn.textContent = "Start Recording";
+            recordBtn.disabled = false;
         }
-    </script>
+    }
+
+    function appendMessage(sender, text, cls) {
+        const div = document.createElement("div");
+        div.className = `message ${cls}`;
+        div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+
 </body>
 </html>
