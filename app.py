@@ -1,8 +1,12 @@
 import os
 import base64
 import tempfile
+<<<<<<< HEAD
 
 from fastapi import FastAPI, UploadFile, File, Request
+=======
+from fastapi import FastAPI, UploadFile, File, Request, Form
+>>>>>>> e41af82dece4261b3e5628d88ce30e8fae72e98f
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -10,21 +14,27 @@ from fastapi.staticfiles import StaticFiles
 from groq import Groq # type: ignore
 from gtts import gTTS # type: ignore
 from dotenv import load_dotenv
+from pymongo import MongoClient
+import datetime
 
 # --------------------------------------------------
 # Load environment variables
 # --------------------------------------------------
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MONGO_URI = os.getenv("MONGO_URI")
 
 if not GROQ_API_KEY:
     raise ValueError("Please set your GROQ_API_KEY environment variable.")
+if not MONGO_URI:
+    raise ValueError("Please set your MONGO_URI environment variable.")
 
 # --------------------------------------------------
 # App initialization
 # --------------------------------------------------
 app = FastAPI()
 
+<<<<<<< HEAD
 # ✅ STATIC FILES (THIS WAS YOUR ISSUE)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -34,6 +44,13 @@ client = Groq(api_key=GROQ_API_KEY)
 # --------------------------------------------------
 # Conversation memory
 # --------------------------------------------------
+=======
+
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client["speech_therapy_db"]   
+chat_collection = db["conversations"]
+
+>>>>>>> e41af82dece4261b3e5628d88ce30e8fae72e98f
 conversation_history = [
     {
         "role": "system",
@@ -63,7 +80,16 @@ async def home(request: Request):
     )
 
 @app.post("/process-audio")
+<<<<<<< HEAD
 async def process_audio(file: UploadFile = File(...)):
+=======
+async def process_audio(user_id : str = Form(...), file : UploadFile = File(...)):
+    
+    with tempfile.NamedTemporaryFile(delete = False, suffix = ".webm") as temp_input:
+        temp_input.write(await file.read())
+        temp_input_path = temp_input.name
+
+>>>>>>> e41af82dece4261b3e5628d88ce30e8fae72e98f
     try:
         # Save input audio temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_input:
@@ -78,6 +104,19 @@ async def process_audio(file: UploadFile = File(...)):
                 response_format="json",
                 language="en"
             )
+<<<<<<< HEAD
+=======
+        user_text = transcription.text
+
+        user_record = chat_collection.find_one({"user_id" : user_id})
+        messages = [conversation_history]
+        if user_record and "history" in user_record:
+            messages.extend(user_record["history"])
+        messages.append({"role" : "user", "content" : user_text})
+        
+        if not user_text.strip():
+            return JSONResponse({"user_text" : "", "ai_text": "I couldn't hear you.", "audio_base64" : None})
+>>>>>>> e41af82dece4261b3e5628d88ce30e8fae72e98f
 
         user_text = transcription.text.strip()
 
@@ -101,6 +140,7 @@ async def process_audio(file: UploadFile = File(...)):
             max_tokens=250
         )
 
+<<<<<<< HEAD
         ai_text = completion.choices[0].message.content
         conversation_history.append({
             "role": "assistant",
@@ -110,6 +150,20 @@ async def process_audio(file: UploadFile = File(...)):
         # Text-to-speech
         tts = gTTS(text=ai_text, lang="en", slow=False)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_output:
+=======
+        new_interaction = [
+            {"role": "user", "content": user_text, "timestamp": datetime.datetime.now()},
+            {"role": "assistant", "content": ai_response, "timestamp": datetime.datetime.now()}
+        ]
+        chat_collection.update_one(
+            {"user_id": user_id},
+            {"$push": {"history": {"$each": new_interaction}}},
+            upsert=True  
+        )
+
+        tts = gTTS(text = ai_response, lang = 'en', slow = False)
+        with tempfile.NamedTemporaryFile(delete = False, suffix = ".mp3") as temp_output:
+>>>>>>> e41af82dece4261b3e5628d88ce30e8fae72e98f
             tts.save(temp_output.name)
             temp_output_path = temp_output.name
 
