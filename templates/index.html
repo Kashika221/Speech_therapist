@@ -6,8 +6,15 @@
     <title>AI Speech Therapist</title>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center; }
+        
+        /* New User ID Input Style */
+        .user-input { margin-bottom: 20px; }
+        #userId { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 200px; }
+
         #recordBtn { padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 50px; border: none; background-color: #007bff; color: white; }
         #recordBtn.recording { background-color: #dc3545; animation: pulse 1.5s infinite; }
+        #recordBtn:disabled { background-color: #ccc; cursor: not-allowed; }
+
         .chat-box { margin-top: 20px; text-align: left; border: 1px solid #ddd; padding: 15px; height: 300px; overflow-y: scroll; border-radius: 8px;}
         .message { margin-bottom: 10px; padding: 10px; border-radius: 8px; }
         .user { background-color: #e9ecef; color: #333; }
@@ -18,12 +25,17 @@
 <body>
 
     <h1>🗣️ AI Speech Therapist</h1>
+    
+    <div class="user-input">
+        <input type="text" id="userId" placeholder="Enter User ID (e.g., JohnDoe)" required>
+    </div>
+
     <p>Press the button and speak. The AI will listen and respond.</p>
 
     <button id="recordBtn">Start Recording</button>
 
     <div class="chat-box" id="chatBox">
-        <div class="message therapist"><strong>Therapist:</strong> Hello! I am ready to help you practice. Please press record and introduce yourself.</div>
+        <div class="message therapist"><strong>Therapist:</strong> Hello! I am ready to help you practice. Please enter your ID, press record, and introduce yourself.</div>
     </div>
 
     <script>
@@ -31,39 +43,56 @@
         let audioChunks = [];
         const recordBtn = document.getElementById("recordBtn");
         const chatBox = document.getElementById("chatBox");
+        const userIdInput = document.getElementById("userId");
 
         recordBtn.addEventListener("click", async () => {
+            // Validate User ID first
+            if (!userIdInput.value.trim()) {
+                alert("Please enter a User ID first.");
+                return;
+            }
+
             if (mediaRecorder && mediaRecorder.state === "recording") {
                 mediaRecorder.stop();
                 recordBtn.textContent = "Processing...";
                 recordBtn.classList.remove("recording");
+                recordBtn.disabled = true; // Disable button while processing
             } else {
                 startRecording();
             }
         });
 
         async function startRecording() {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
 
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
 
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                sendAudio(audioBlob);
-            };
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    sendAudio(audioBlob);
+                };
 
-            mediaRecorder.start();
-            recordBtn.textContent = "Stop Recording";
-            recordBtn.classList.add("recording");
+                mediaRecorder.start();
+                recordBtn.textContent = "Stop Recording";
+                recordBtn.classList.add("recording");
+            } catch (err) {
+                console.error("Microphone access denied:", err);
+                alert("Could not access microphone. Please allow permissions.");
+            }
         }
 
         async function sendAudio(blob) {
             const formData = new FormData();
             formData.append("file", blob, "input.webm");
+            
+            // --- CRITICAL CHANGE: Append the User ID to the form ---
+            formData.append("user_id", userIdInput.value.trim()); 
+            // -------------------------------------------------------
 
             try {
                 const response = await fetch("/process-audio", {
@@ -74,21 +103,23 @@
 
                 if (data.error) {
                     alert("Error: " + data.error);
-                    recordBtn.textContent = "Start Recording";
                     return;
                 }
 
                 appendMessage("You", data.user_text, "user");
                 appendMessage("Therapist", data.ai_text, "therapist");
 
-                const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
-                audio.play();
+                if (data.audio_base64) {
+                    const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
+                    audio.play();
+                }
 
             } catch (error) {
                 console.error(error);
                 alert("Something went wrong.");
             } finally {
                 recordBtn.textContent = "Start Recording";
+                recordBtn.disabled = false;
             }
         }
 
