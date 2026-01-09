@@ -39,8 +39,6 @@
             </div>
         </div>
 
-    <div class="chat-box" id="chatBox">
-        <div class="message therapist"><strong>Therapist:</strong> Hello! I am ready to help you practice. Please enter your ID, press record, and introduce yourself.</div>
     </div>
 </div>
 
@@ -89,20 +87,10 @@
         }
     }
 
-<<<<<<< HEAD
     async function sendAudio(blob) {
         const formData = new FormData();
         formData.append("file", blob, "input.webm");
         formData.append("user_id", userIdInput.value.trim());
-=======
-        async function sendAudio(blob) {
-            const formData = new FormData();
-            formData.append("file", blob, "input.webm");
-            
-            // --- CRITICAL CHANGE: Append the User ID to the form ---
-            formData.append("user_id", userIdInput.value.trim()); 
-            // -------------------------------------------------------
->>>>>>> e41af82dece4261b3e5628d88ce30e8fae72e98f
 
         try {
             const response = await fetch("/process-audio", {
@@ -110,33 +98,11 @@
                 body: formData
             });
 
-<<<<<<< HEAD
             const data = await response.json();
 
             if (data.error) {
                 alert(data.error);
                 return;
-=======
-                if (data.error) {
-                    alert("Error: " + data.error);
-                    return;
-                }
-
-                appendMessage("You", data.user_text, "user");
-                appendMessage("Therapist", data.ai_text, "therapist");
-
-                if (data.audio_base64) {
-                    const audio = new Audio("data:audio/mp3;base64," + data.audio_base64);
-                    audio.play();
-                }
-
-            } catch (error) {
-                console.error(error);
-                alert("Something went wrong.");
-            } finally {
-                recordBtn.textContent = "Start Recording";
-                recordBtn.disabled = false;
->>>>>>> e41af82dece4261b3e5628d88ce30e8fae72e98f
             }
 
             appendMessage("You", data.user_text, "user");
