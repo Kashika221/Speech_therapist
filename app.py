@@ -1,23 +1,33 @@
 import os
 import base64
 import tempfile
-from fastapi import FastAPI, UploadFile, File, Request
+from fastapi import FastAPI, UploadFile, File, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from groq import Groq
 from gtts import gTTS
 from dotenv import load_dotenv
+from pymongo import MongoClient
+import datetime
 
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MONGO_URI = os.getenv("MONGO_URI")
 
 if not GROQ_API_KEY:
     raise ValueError("Please set your GROQ_API_KEY environment variable.")
+if not MONGO_URI:
+    raise ValueError("Please set your MONGO_URI environment variable.")
 
 app = FastAPI()
 client = Groq(api_key = GROQ_API_KEY)
 templates = Jinja2Templates(directory="templates")
+
+
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client["speech_therapy_db"]   
+chat_collection = db["conversations"]
 
 conversation_history = [
     {
@@ -42,7 +52,7 @@ async def read_root(request : Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/process-audio")
-async def process_audio(file : UploadFile = File(...)):
+async def process_audio(user_id : str = Form(...), file : UploadFile = File(...)):
     
     with tempfile.NamedTemporaryFile(delete = False, suffix = ".webm") as temp_input:
         temp_input.write(await file.read())
@@ -57,6 +67,12 @@ async def process_audio(file : UploadFile = File(...)):
                 language = "en"
             )
         user_text = transcription.text
+
+        user_record = chat_collection.find_one({"user_id" : user_id})
+        messages = [conversation_history]
+        if user_record and "history" in user_record:
+            messages.extend(user_record["history"])
+        messages.append({"role" : "user", "content" : user_text})
         
         if not user_text.strip():
             return JSONResponse({"user_text" : "", "ai_text": "I couldn't hear you.", "audio_base64" : None})
@@ -71,6 +87,16 @@ async def process_audio(file : UploadFile = File(...)):
         )
         ai_response = completion.choices[0].message.content
         conversation_history.append({"role" : "assistant", "content" : ai_response})
+
+        new_interaction = [
+            {"role": "user", "content": user_text, "timestamp": datetime.datetime.now()},
+            {"role": "assistant", "content": ai_response, "timestamp": datetime.datetime.now()}
+        ]
+        chat_collection.update_one(
+            {"user_id": user_id},
+            {"$push": {"history": {"$each": new_interaction}}},
+            upsert=True  
+        )
 
         tts = gTTS(text = ai_response, lang = 'en', slow = False)
         with tempfile.NamedTemporaryFile(delete = False, suffix = ".mp3") as temp_output:
