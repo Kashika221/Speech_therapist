@@ -5,7 +5,7 @@ import datetime
 from fastapi import FastAPI, UploadFile, File, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware # <--- 1. Import CORS
+from fastapi.middleware.cors import CORSMiddleware 
 from groq import Groq
 from gtts import gTTS
 from dotenv import load_dotenv
@@ -127,7 +127,7 @@ async def process_audio(user_id: str = Form(...), file : UploadFile = File(...))
     except Exception as e:
         if os.path.exists(temp_input_path):
             os.remove(temp_input_path)
-        return JSONResponse({"error": str(e)}, status_code = 500)
+        return JSONResponse({"error" : str(e)}, status_code = 500)
     
 if __name__ == "__main__":
     import uvicorn
