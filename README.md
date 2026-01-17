@@ -109,7 +109,7 @@ This tool is a demonstration of AI capabilities and is **not** a replacement for
 * **Error: `PyAudio` failed to install**: See the "Installation" section regarding `portaudio`.
 * **No Audio Output**: Check your system's default audio output device.
 
-## 🤝 Next Steps
+## Next Steps
 
 * [ ] Implement Voice Activity Detection (VAD) to stop recording automatically when you stop speaking.
 * [ ] Add a GUI (using Streamlit or Tkinter) for a visual interface.
