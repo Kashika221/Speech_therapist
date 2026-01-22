@@ -4,6 +4,10 @@ An interactive, voice-based application designed to help users overcome speech i
 
 This tool uses **Groq's** ultra-fast API to perform real-time speech-to-text (Whisper) and text generation (Llama 3), acting as a compassionate digital therapist that listens to your voice and provides audible feedback and exercises.
 
+### Live Demo
+
+-  https://speech-therapist-1.onrender.com
+
 ## Features
 
 * **Real-time Speech Recognition:** Uses `whisper-large-v3-turbo` via Groq for high-accuracy transcription.
